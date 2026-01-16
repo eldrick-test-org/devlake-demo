@@ -38,3 +38,5 @@ To simulate an incident and its resolution:
 2.  **Resolve the Incident**:
     *   Close the Issue when "fixed".
     *   *DevLake Signal*: Issue closing marks the service restoration.
+
+<!-- Simulation run at 01/16/2026 21:00:52 -->
