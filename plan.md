@@ -11,6 +11,7 @@ Transform the local `devlake-demo` directory into a Node.js application with a s
 ### 1. Application Scaffolding
 - [x] **Initialize Node.js App**: Create a simple Express server (`server.js`) and `package.json`.
 - [x] **Git Configuration**: Initialize git and set remote to `eldrick-test-org/devlake-demo`.
+- [x] **UI Implementation**: Create a simple frontend (`public/index.html`) to make the app look realistic.
 
 ### 2. DORA Metrics "Signal" Generators
 
