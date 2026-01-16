@@ -9,17 +9,38 @@
 <body>
     <div class="container">
         <header>
-            <h1>🥑 Avocado Corp App</h1>
+            <div class="header-content">
+                <h1>Apache DevLake DORA Demo</h1>
+                <p class="subtitle">DORA Metrics Generation Target</p>
+            </div>
             <span class="badge">v1.0.0</span>
         </header>
         
         <main>
             <div class="card">
-                <h2>System Status</h2>
+                <h2>Simulation Status</h2>
                 <div class="status-indicator online">
-                    <span class="dot"></span> All Systems Operational
+                    <span class="dot"></span> DORA Metrics Generator Active
                 </div>
-                <p>Monitoring active. DORA metrics being generated.</p>
+                <p>This application simulates a production workload. Use GitHub Actions to trigger deployments and incidents.</p>
+                <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                    <div class="metric-box" style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 3px solid #007bff;">
+                        <strong>Deployment Freq</strong><br>
+                        <small>Via PR Merge</small>
+                    </div>
+                    <div class="metric-box" style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 3px solid #28a745;">
+                        <strong>Lead Time</strong><br>
+                        <small>Commit -> Deploy</small>
+                    </div>
+                    <div class="metric-box" style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 3px solid #dc3545;">
+                        <strong>Change Fail Rate</strong><br>
+                        <small>Simulated Failures</small>
+                    </div>
+                    <div class="metric-box" style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 3px solid #ffc107;">
+                        <strong>Time to Restore</strong><br>
+                        <small>Incident Issues</small>
+                    </div>
+                </div>
             </div>
 
             <div class="card">
