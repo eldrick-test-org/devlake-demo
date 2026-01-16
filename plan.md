@@ -31,10 +31,8 @@ Transform the local `devlake-demo` directory into a Node.js application with a s
 - [x] **Workflow Failure Option**: Add a `workflow_dispatch` input to the CD pipeline to force a failure (simulating an immediate deployment failure).
 
 ### 3. Documentation & Usage
-- [x] **Create `USAGE.md`**: Step-by-step guide to generating metrics:
-    1.  **Lead Time**: Create a PR, change code, merge.
-    2.  **Deployment**: Watch `deploy-prod` run automatically.
-    3.  **Failure/Restore**: Create an Issue with `incident` label, then close it after a few minutes.
+- [x] **Create `USAGE.md`**: Step-by-step guide to generating metrics.
+- [x] **Traffic Script**: Created `simulate_dora.ps1` to automate DORA signal generation.
 
 ## Notes & Considerations
 - **Authentication**: I will stage all changes locally. You must perform the `git push`.
