@@ -8,21 +8,55 @@ This repository is used to demonstrate and validate the **GitHub Copilot Impact 
 - **Change Failure Rate** (via Simulated Failures)
 - **Time to Restore Service** (via Incident Issues)
 
-## Getting Started
+## Repository Structure
 
-### Local Development
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Start the server:
-   ```bash
-   npm start
-   ```
-3. Visit `http://localhost:3000` to view the simulation dashboard.
+```
+devlake-demo/
+├── .github/workflows/     # CI/CD pipelines for DORA metrics
+│   ├── ci.yml             # PR checks
+│   └── deploy-prod.yml    # Production deployments (with failure simulation)
+├── docs/
+│   ├── DEVLAKE_SETUP.md   # Complete local DevLake setup guide
+│   ├── USAGE.md           # How to generate DORA metrics
+│   └── plan.md            # Implementation plan
+├── public/                # Static web assets
+├── scripts/
+│   ├── simulate_dora.ps1  # Automated DORA signal generation
+│   └── export-to-powerbi.ps1
+├── docker-compose.yml     # Local DevLake stack
+├── server.js              # Express app
+└── package.json
+```
 
-## Generating Metrics
-See [USAGE.md](USAGE.md) for detailed instructions on how to trigger deployments, simulate failures, and manage incidents to populate your DORA dashboard.
+## Quick Start
+
+### Run the Demo App
+```bash
+npm install
+npm start
+# Visit http://localhost:3000
+```
+
+### Run DevLake Locally
+See **[docs/DEVLAKE_SETUP.md](docs/DEVLAKE_SETUP.md)** for complete instructions on:
+- Building custom Docker images from the fork
+- Configuring connections via API
+- Setting up DORA and Copilot metric collection
+- Accessing Grafana dashboards
+
+### Generate DORA Test Data
+```powershell
+.\scripts\simulate_dora.ps1
+```
+See **[docs/USAGE.md](docs/USAGE.md)** for manual methods.
+
+## DevLake Access (when running locally)
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Config UI | http://localhost:4004 | N/A |
+| Grafana | http://localhost:3004 | admin / admin |
+| DevLake API | http://localhost:8085 | N/A |
 
 ---
 Part of the DevLake Copilot Metrics Research initiative.

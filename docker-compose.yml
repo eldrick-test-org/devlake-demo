@@ -20,7 +20,7 @@ services:
       - mysql-storage:/var/lib/mysql
     restart: always
     ports:
-      - 3306:3306
+      - 3307:3306
     environment:
       MYSQL_ROOT_PASSWORD: admin
       MYSQL_DATABASE: lake
@@ -32,13 +32,13 @@ services:
       --skip-log-bin
 
   grafana:
-    image: devlake.docker.scarf.sh/apache/devlake-dashboard:v1.0.3-beta8
+    image: devlake-dashboard:local
     ports:
-      - 3002:3000
+      - 3004:3000
     volumes:
       - grafana-storage:/var/lib/grafana
     environment:
-      GF_SERVER_ROOT_URL: "http://localhost:4000/grafana"
+      GF_SERVER_ROOT_URL: "http://localhost:4004/grafana"
       GF_USERS_DEFAULT_THEME: "light"
       MYSQL_URL: mysql:3306
       MYSQL_DATABASE: lake
@@ -50,9 +50,9 @@ services:
       - mysql
 
   devlake:
-    image: devlake.docker.scarf.sh/apache/devlake:v1.0.3-beta8
+    image: devlake-backend:local
     ports:
-      - 8080:8080
+      - 8085:8080
     restart: always
     volumes:
       - devlake-log:/app/logs
@@ -65,9 +65,9 @@ services:
       - mysql
 
   config-ui:
-    image: devlake.docker.scarf.sh/apache/devlake-config-ui:v1.0.3-beta8
+    image: devlake-config-ui:local
     ports:
-      - 4000:4000
+      - 4004:4000
     env_file:
       - ./.env
     environment:
