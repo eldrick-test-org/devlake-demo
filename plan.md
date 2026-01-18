@@ -1,41 +1,60 @@
-# Implementation Plan - DevLake Demo App
+# Implementation Plan - Local DevLake Environment (Fork)
 
 ## Problem Statement
-To validate the "GitHub Copilot Impact Dashboard," we need a controlled repository (`devlake-demo`) that generates consistent DORA metrics. This repository must simulate a full development lifecycle—including coding, deploying, and handling incidents—to provide the necessary data points (deployments, incidents, PRs) for DevLake to ingest and correlate with Copilot adoption.
+We need to validate the "GitHub Copilot Impact Dashboard" and DORA metrics using a local DevLake instance. This instance must run from the `incubator-devlake` fork (`ewega/incubator-devlake`) which contains the custom `gh-copilot` plugin and Grafana dashboards. The standard Docker images do not contain these changes.
 
 ## Proposed Solution
-Transform the local `devlake-demo` directory into a Node.js application with a suite of GitHub Actions workflows and Issue Templates specifically designed to produce DORA signals.
+We will build custom Docker images from the local `incubator-devlake` source code and orchestrate them using an updated `docker-compose.yml` in the `devlake-demo` directory. This allows us to test the full stack (Backend + Config UI + Grafana) with our custom changes.
 
 ## Workplan
 
-### 1. Application Scaffolding
-- [x] **Initialize Node.js App**: Create a simple Express server (`server.js`) and `package.json`.
-- [x] **Git Configuration**: Initialize git and set remote to `eldrick-test-org/devlake-demo`.
-- [x] **UI Implementation**: Create a simple frontend (`public/index.html`) to make the app look realistic.
+### 1. Build Custom Docker Images
+*Perform these builds from the `../incubator-devlake` directory context.*
+- [x] **Backend Image**: Build `devlake-backend:local` from `backend/`.
+    - Command: `docker build -t devlake-backend:local -f Dockerfile .` (inside `backend/`)
+- [x] **Config UI Image**: Build `devlake-config-ui:local` from `config-ui/`.
+    - Command: `docker build -t devlake-config-ui:local -f Dockerfile .` (inside `config-ui/`)
+- [x] **Grafana Dashboard Image**: Build `devlake-dashboard:local` from `grafana/`.
+    - Command: `docker build -t devlake-dashboard:local -f Dockerfile .` (inside `grafana/`)
 
-### 2. DORA Metrics "Signal" Generators
+### 2. Configure Local Orchestration
+- [x] **Update `docker-compose.yml`**: Modify the existing file in `devlake-demo` to:
+    - Point `devlake` service to `devlake-backend:local`.
+    - Point `config-ui` service to `devlake-config-ui:local`.
+    - Point `grafana` service to `devlake-dashboard:local`.
+    - Ensure `.env` file exists and is referenced correctly.
 
-#### A. Deployment Frequency & Lead Time for Changes
-*Target*: Frequent successful deployments triggered by PR merges.
-- [x] **CI Pipeline (`.github/workflows/ci.yml`)**: Runs unit tests on PRs.
-- [x] **CD Pipeline (`.github/workflows/deploy-prod.yml`)**: 
-    - [x] Triggers on `push` to `main`.
-    - [x] **Naming Convention**: Must match DevLake's default regex (e.g., "Production Deploy").
-    - [x] **Job Steps**: Simulate a build and deploy process (sleep, echo).
+### 3. Execution & Verification
+- [x] **Start Stack**: Run `docker-compose up -d`.
+- [x] **Verify Services**:
+    - Config UI: `http://localhost:4004`
+    - Grafana: `http://localhost:3004`
+    - DevLake API: `http://localhost:8085`
 
-#### B. Change Failure Rate & Time to Restore Service
-*Target*: Incidents caused by deployments, and their resolution.
-- [x] **Incident Issue Template (`.github/ISSUE_TEMPLATE/incident.md`)**:
-    - [x] Pre-filled with `incident` label.
-    - [x] Used to manually signal that a deployment caused a failure.
-- [x] **Workflow Failure Option**: Add a `workflow_dispatch` input to the CD pipeline to force a failure (simulating an immediate deployment failure).
+### 4. Data Connection Setup (Automated via API)
+- [x] **GitHub Connection**: Created connection `eldrick-test-org` (ID: 1) with REST API (GraphQL disabled due to scope limitation).
+- [x] **gh-copilot Connection**: Created connection `eldrick-test-org-copilot` (ID: 1) for Copilot metrics.
+- [x] **Scope Config**: Created `dora-config` with deployment/production patterns and incident label detection.
+- [x] **Repository Scope**: Added `eldrick-test-org/devlake-demo` (GitHub ID: 1135867696).
+- [x] **Copilot Scope**: Added `eldrick-test-org` organization.
+- [x] **Project & Blueprint**: Created "DevLake Demo" project with blueprint connecting both plugins.
+- [x] **Data Sync**: Triggered pipeline #2 - completed successfully!
 
-### 3. Documentation & Usage
-- [x] **Create `USAGE.md`**: Step-by-step guide to generating metrics.
-- [x] **Traffic Script**: Created `simulate_dora.ps1` to automate DORA signal generation.
+### 5. Collected Data Summary
+| Table | Count |
+|-------|-------|
+| cicd_deployments | 7 |
+| cicd_pipelines | 14 |
+| pull_requests | 2 |
+| issues | 1 |
+| _tool_copilot_org_metrics | 58 |
+| _tool_copilot_seats | 2 |
+
+### 6. Access URLs
+- **Config UI**: http://localhost:4004
+- **Grafana**: http://localhost:3004 (admin/admin)
+- **DevLake API**: http://localhost:8085
 
 ## Notes & Considerations
-- **Authentication**: I will stage all changes locally. You must perform the `git push`.
-- **DevLake Configuration**: You will need to ensure your DevLake Project config uses the standard regexes:
-    - Deployments: `(?i)deploy` or `(?i)prod`
-    - Incidents: `(?i)incident` (Label)
+- **Build Time**: The initial backend build compiles `libgit2` and Go dependencies, which may take 5-10 minutes.
+- **Docker Context**: We must be careful with build contexts. The `Makefile` suggests entering the subdirectories (`backend`, `config-ui`, `grafana`) before building.
