@@ -109,10 +109,39 @@ for ($i = 0; $i -lt 90; $i++) {
         $cycleTimeHours = $baseCycleTimeHours * (1 + $variance)
         $cycleTimeMins = [Math]::Round($cycleTimeHours * 60)
         
+        # Calculate cycle time components (coding, pickup, review)
+        # High Copilot adoption (Phase 3) = faster coding and review times
+        if ($i -lt 30) {
+            # Phase 1: Low adoption - slower coding time
+            $codingPct = 0.40  # 40% coding
+            $pickupPct = 0.30  # 30% waiting for review
+            $reviewPct = 0.30  # 30% review
+        }
+        elseif ($i -lt 60) {
+            # Phase 2: Medium adoption - balanced
+            $codingPct = 0.33
+            $pickupPct = 0.27
+            $reviewPct = 0.40
+        }
+        else {
+            # Phase 3: High adoption - Copilot helps write code faster
+            $codingPct = 0.25  # 25% coding (faster with Copilot)
+            $pickupPct = 0.25  # 25% pickup
+            $reviewPct = 0.50  # 50% review (more thorough)
+        }
+        
+        # Add randomness ±10%
+        $codingTimeMins = [Math]::Round($cycleTimeMins * $codingPct * (0.9 + (Get-Random -Minimum 0 -Maximum 20) / 100))
+        $pickupTimeMins = [Math]::Round($cycleTimeMins * $pickupPct * (0.9 + (Get-Random -Minimum 0 -Maximum 20) / 100))
+        $reviewTimeMins = $cycleTimeMins - $codingTimeMins - $pickupTimeMins
+        
+        # Ensure review time is positive
+        if ($reviewTimeMins -lt 0) { $reviewTimeMins = [Math]::Round($cycleTimeMins * 0.2) }
+        
         # Link deployment to PR for Lead Time calculation (metric requires it)
         # We'll just generate PR metrics directly for simplicity as DORA dashboard uses project_pr_metrics heavily
         $createdDate = $currentDate.AddMinutes(-$cycleTimeMins).ToString("yyyy-MM-dd HH:mm:ss")
-        $sql += "INSERT INTO project_pr_metrics (id, project_name, pr_cycle_time, pr_created_date, pr_merged_date, created_at, updated_at) VALUES ('$prId', '$projectName', $cycleTimeMins, '$createdDate', '$datetimeStr', NOW(), NOW());`n"
+        $sql += "INSERT INTO project_pr_metrics (id, project_name, pr_cycle_time, pr_coding_time, pr_pickup_time, pr_review_time, pr_created_date, pr_merged_date, created_at, updated_at) VALUES ('$prId', '$projectName', $cycleTimeMins, $codingTimeMins, $pickupTimeMins, $reviewTimeMins, '$createdDate', '$datetimeStr', NOW(), NOW());`n"
     }
 
     # ==========================
