@@ -32,7 +32,7 @@ DELETE FROM _tool_copilot_language_metrics WHERE scope_id = '$scopeId';
 DELETE FROM project_pr_metrics WHERE project_name = '$projectName' AND id LIKE 'fake-pr-%';
 DELETE FROM cicd_deployment_commits WHERE cicd_scope_id = '$repoScopeId' AND id LIKE 'fake-deploy-%';
 DELETE FROM incidents WHERE scope_id = '$repoScopeId' AND id LIKE 'fake-inc-%';
-DELETE FROM project_incident_deployment_relationships WHERE id LIKE 'fake-rel-%';
+DELETE FROM project_incident_deployment_relationships WHERE id LIKE 'fake-inc-%';
 
 "@
 

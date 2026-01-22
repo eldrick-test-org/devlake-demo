@@ -61,6 +61,7 @@ services:
     environment:
       LOGGING_DIR: /app/logs
       TZ: UTC
+      FORCE_MIGRATION: "true"
     depends_on:
       - mysql
 
