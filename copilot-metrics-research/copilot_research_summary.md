@@ -8,24 +8,28 @@ All research is complete. This document summarizes findings across all research 
 
 ## 1. API Research Complete
 
+**Legacy Copilot metrics endpoints are deprecated and scheduled to sunset (April 2, 2026).**
+Use Copilot usage metrics report endpoints for all new work.
+
 ### Tested Endpoints (octodemo org)
 
 | Endpoint | Status | Notes |
 |----------|--------|-------|
 | `GET /orgs/{org}/copilot/billing` | ✅ Works | Returns seat breakdown, plan type |
-| `GET /orgs/{org}/copilot/metrics` | ✅ Works | Daily metrics with detailed breakdown |
+| `GET /orgs/{org}/copilot/metrics/reports/organization-1-day?day=YYYY-MM-DD` | ✅ Works | Returns report download links |
+| `GET /orgs/{org}/copilot/metrics/reports/organization-28-day/latest` | ✅ Works | Returns report download links |
 | `GET /orgs/{org}/copilot/billing/seats` | ✅ Works | Lists all seat assignments |
-| `GET /orgs/{org}/team/{team}/copilot/metrics` | ⚠️ Empty | Requires 5+ licensed users per team |
+| `GET /orgs/{org}/team/{team}/copilot/metrics` | ⚠️ Deprecated | Legacy endpoint scheduled for sunset |
 
 ### Key API Findings
 
-1. **100-day lookback limit** - Historical data beyond 100 days not available
+1. **Reports available up to 1 year** - Download and store incrementally
 2. **Privacy threshold** - Team metrics require 5+ users
 3. **Daily data** - Metrics processed next-day
-4. **PR data includes repo names** - Critical for repo-level correlation
+4. **Report download links expire** - Fetch promptly
 5. **Seat `created_at` dates** - Can derive implementation date automatically
 
-### Sample Response Structure (Metrics API)
+### Sample Response Structure (Report File)
 
 ```json
 {
@@ -103,7 +107,7 @@ All research is complete. This document summarizes findings across all research 
 
 The Q Dev plugin (`backend/plugins/q_dev/`) provides the closest pattern:
 
-- AWS S3-based data collection (we use GitHub REST API)
+- AWS S3-based data collection (we use GitHub REST API reports + downloads)
 - User-level metrics (we aggregate to org/team level)
 - No domain layer conversion (stays in tool tables)
 - Two subtasks: collect + extract (we'll have billing + metrics + seats)

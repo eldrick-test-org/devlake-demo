@@ -31,18 +31,26 @@ Instead of per-user productivity tracking, we measure:
 | Endpoint | Purpose | Scope |
 |----------|---------|-------|
 | `GET /orgs/{org}/copilot/billing` | Seat breakdown, settings | Org |
-| `GET /orgs/{org}/copilot/metrics` | Daily usage metrics | Org |
-| `GET /orgs/{org}/team/{team}/copilot/metrics` | Team-level metrics | Team |
+| `GET /orgs/{org}/copilot/metrics/reports/organization-1-day?day=YYYY-MM-DD` | Org daily report (download links) | Org |
+| `GET /orgs/{org}/copilot/metrics/reports/organization-28-day/latest` | Org 28-day report (download links) | Org |
+| `GET /orgs/{org}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD` | Org user daily report (download links) | Org |
+| `GET /orgs/{org}/copilot/metrics/reports/users-28-day/latest` | Org user 28-day report (download links) | Org |
+| `GET /enterprises/{enterprise}/copilot/metrics/reports/enterprise-1-day?day=YYYY-MM-DD` | Enterprise daily report (download links) | Enterprise |
+| `GET /enterprises/{enterprise}/copilot/metrics/reports/enterprise-28-day/latest` | Enterprise 28-day report (download links) | Enterprise |
+| `GET /enterprises/{enterprise}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD` | Enterprise user daily report (download links) | Enterprise |
+| `GET /enterprises/{enterprise}/copilot/metrics/reports/users-28-day/latest` | Enterprise user 28-day report (download links) | Enterprise |
 | `GET /orgs/{org}/copilot/billing/seats` | Seat assignments | Org |
 
 ### 2.2 Required Permissions
-- Personal Access Token (Classic): `manage_billing:copilot` OR `read:org`
-- Fine-grained PAT: "GitHub Copilot Business" org permissions (read)
+- Enterprise reports: PAT (classic) `manage_billing:copilot` or `read:enterprise`
+- Org reports: PAT (classic) `read:org`
+- Fine-grained PAT: "Enterprise Copilot metrics" or "Organization Copilot metrics" (read)
 
 ### 2.3 API Limitations
-- **100-day lookback limit** - Must collect incrementally
+- **Reports available up to 1 year** - Collect incrementally
 - **5+ users privacy threshold** - Small teams won't return data
 - **Daily processing** - Data available next day
+- **Signed URLs expire** - Download promptly
 
 ---
 
@@ -56,6 +64,7 @@ type CopilotConnection struct {
     helper.BaseConnection
     Token        string `json:"token"`        // GitHub PAT
     Organization string `json:"organization"` // Target org name
+    Enterprise   string `json:"enterprise,omitempty"` // Optional enterprise slug
     Endpoint     string `json:"endpoint"`     // API endpoint (default: api.github.com)
     RateLimitPerHour int `json:"rateLimitPerHour" default:"5000"`
 }
@@ -167,19 +176,20 @@ type CopilotSeat struct {
 ### 4.1 Task Flow
 
 ```
-collectCopilotBilling → collectCopilotMetrics → collectCopilotSeats → extractCopilotData
+collectCopilotBilling → collectCopilotReports → downloadCopilotReports → extractCopilotData
 ```
 
 | Task | Description | Dependencies |
 |------|-------------|--------------|
 | `collectCopilotBilling` | Get org billing/seat summary | None |
-| `collectCopilotMetrics` | Collect daily metrics from API | Billing |
+| `collectCopilotReports` | Request report metadata (download links) | Billing |
+| `downloadCopilotReports` | Download JSON/JSONL report files | Reports |
 | `collectCopilotSeats` | Get seat assignments (optional) | None |
 | `extractCopilotData` | Parse and store metrics | Metrics collected |
 
 ### 4.2 Incremental Collection
 
-Since API only provides 100-day lookback:
+Since reports are only available up to 1 year:
 - Store last collected date in state
 - On each run, collect from last_date to today
 - Handle gaps gracefully
