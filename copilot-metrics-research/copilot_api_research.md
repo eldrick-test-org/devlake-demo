@@ -8,105 +8,28 @@
 
 There are **3 main API categories** for GitHub Copilot data:
 
-### 1. Copilot Metrics API (Aggregated - Best for Option B)
-**Endpoint**: `GET /orgs/{org}/copilot/metrics` or `GET /enterprises/{enterprise}/copilot/metrics`
+### 1. Copilot Usage Metrics Reports (Aggregated + User-Level)
+**Primary Endpoints (recommended)**:
+- **Enterprise (28-day latest)**: `GET /enterprises/{enterprise}/copilot/metrics/reports/enterprise-28-day/latest`
+- **Enterprise (1-day)**: `GET /enterprises/{enterprise}/copilot/metrics/reports/enterprise-1-day?day=YYYY-MM-DD`
+- **Enterprise users (28-day latest)**: `GET /enterprises/{enterprise}/copilot/metrics/reports/users-28-day/latest`
+- **Enterprise users (1-day)**: `GET /enterprises/{enterprise}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD`
+- **Organization (28-day latest)**: `GET /orgs/{org}/copilot/metrics/reports/organization-28-day/latest`
+- **Organization (1-day)**: `GET /orgs/{org}/copilot/metrics/reports/organization-1-day?day=YYYY-MM-DD`
+- **Organization users (28-day latest)**: `GET /orgs/{org}/copilot/metrics/reports/users-28-day/latest`
+- **Organization users (1-day)**: `GET /orgs/{org}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD`
 
 **Key Features**:
-- Returns **aggregated daily metrics** (not per-user)
-- Data for up to **100 days prior**
-- Processed once per day for previous day
-- Requires 5+ licensed users to return data (privacy threshold)
+- **Two-step flow**: request report metadata → download signed JSON files
+- **Aggregated and user-level** usage reports
+- Reports generated daily and available for **up to 1 year**
+- Signed URLs expire (download promptly)
+- **Expanded telemetry** (IDE agents, edit modes, models, languages, LOC)
 - **PERFECT for repo/team-level analysis (Option B)**
 
-**Response Structure** (per day):
-```json
-{
-  "date": "2024-06-24",
-  "total_active_users": 24,
-  "total_engaged_users": 20,
-  "copilot_ide_code_completions": {
-    "total_engaged_users": 20,
-    "languages": [
-      { "name": "python", "total_engaged_users": 10 },
-      { "name": "ruby", "total_engaged_users": 10 }
-    ],
-    "editors": [
-      {
-        "name": "vscode",
-        "total_engaged_users": 13,
-        "models": [
-          {
-            "name": "default",
-            "is_custom_model": false,
-            "total_engaged_users": 13,
-            "languages": [
-              {
-                "name": "python",
-                "total_engaged_users": 6,
-                "total_code_suggestions": 249,
-                "total_code_acceptances": 123,
-                "total_code_lines_suggested": 225,
-                "total_code_lines_accepted": 135
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  },
-  "copilot_ide_chat": {
-    "total_engaged_users": 13,
-    "editors": [
-      {
-        "name": "vscode",
-        "models": [
-          {
-            "total_chats": 45,
-            "total_chat_insertion_events": 12,
-            "total_chat_copy_events": 16
-          }
-        ]
-      }
-    ]
-  },
-  "copilot_dotcom_chat": {
-    "total_engaged_users": 14,
-    "models": [{ "total_chats": 38 }]
-  },
-  "copilot_dotcom_pull_requests": {
-    "total_engaged_users": 12,
-    "repositories": [
-      {
-        "name": "demo/repo1",
-        "total_engaged_users": 8,
-        "models": [
-          {
-            "total_pr_summaries_created": 6,
-            "total_engaged_users": 8
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+**Prerequisite**: Enterprise policy "Copilot usage metrics" must be enabled.
 
-**Scopes**: Team-level (`/orgs/{org}/team/{team_slug}/copilot/metrics`) and Org-level available
-
-**Authentication**: 
-- PAT (classic): `manage_billing:copilot`, `read:org`, or `read:enterprise`
-- Fine-grained: "GitHub Copilot Business" org permissions (read)
-
----
-
-### 2. Copilot Usage Metrics API (JSON Downloads - Enterprise only)
-**Endpoints**:
-- `GET /enterprises/{enterprise}/copilot/metrics/reports/enterprise-28-day/latest` - 28-day aggregate
-- `GET /enterprises/{enterprise}/copilot/metrics/reports/enterprise-1-day?day=YYYY-MM-DD` - Single day
-- `GET /enterprises/{enterprise}/copilot/metrics/reports/users-28-day/latest` - User-level 28-day
-- `GET /enterprises/{enterprise}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD` - User-level single day
-
-**Response**: Returns **download links** to JSON files (signed URLs with expiration)
+**Report Metadata Response** (download links):
 ```json
 {
   "download_links": [
@@ -118,7 +41,38 @@ There are **3 main API categories** for GitHub Copilot data:
 }
 ```
 
-**Note**: Reports available starting **October 10, 2025**, historical data up to 1 year
+**Report File Structure** (per day record):
+```json
+{
+  "day": "2024-06-24",
+  "total_active_users": 24,
+  "total_engaged_users": 20,
+  "daily_active_users": 24,
+  "weekly_active_users": 20,
+  "monthly_active_users": 40,
+  "user_initiated_interaction_count": 120,
+  "code_generation_activity_count": 350,
+  "code_acceptance_activity_count": 180,
+  "loc_suggested_to_add_sum": 500,
+  "loc_suggested_to_delete_sum": 120,
+  "loc_added_sum": 260,
+  "loc_deleted_sum": 80
+}
+```
+
+**Authentication**:
+- Enterprise reports: PAT (classic) `manage_billing:copilot` or `read:enterprise`
+- Org reports: PAT (classic) `read:org`
+- Fine-grained: "Enterprise Copilot metrics" or "Organization Copilot metrics" (read)
+
+---
+
+### 2. Copilot Metrics API (Legacy - Deprecated)
+**Deprecated Endpoints**:
+- `GET /orgs/{org}/copilot/metrics`
+- `GET /enterprises/{enterprise}/copilot/metrics`
+
+**Status**: Sunsets April 2, 2026. Migrate to the usage metrics reports above.
 
 ---
 
@@ -224,10 +178,10 @@ This is PERFECT for Option B (repo-level correlation)!
 
 ### For Option B (Repo/Project-Level Analysis):
 
-1. **Primary Data Source**: Copilot Metrics API (`/orgs/{org}/copilot/metrics`)
-   - Aggregated data, no individual user tracking needed
-   - Team-level granularity available
-   - Repository-level PR metrics available
+1. **Primary Data Source**: Copilot usage metrics reports (enterprise/org)
+  - Two-step flow: request report → download JSON
+  - Use 1-day reports for incremental collection
+  - Use 28-day latest for backfill or validation
 
 2. **Scope Definition**: 
    - Scope = Organization (or Team within org)
@@ -245,7 +199,8 @@ This is PERFECT for Option B (repo-level correlation)!
      - Code review time changes
 
 ### Required Permissions
-- PAT scope: `manage_billing:copilot` OR `read:org`
+- Enterprise reports: `manage_billing:copilot` or `read:enterprise`
+- Org reports: `read:org`
 - Org owner or billing manager access needed
 
 ---

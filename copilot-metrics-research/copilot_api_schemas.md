@@ -6,7 +6,11 @@
 
 ## 1. Enterprise Daily Metrics Schema
 
-**Endpoint:** `GET /enterprises/{enterprise}/copilot/metrics` (with download link)
+**Report Endpoints (metadata with download links):**
+- `GET /enterprises/{enterprise}/copilot/metrics/reports/enterprise-1-day?day=YYYY-MM-DD`
+- `GET /enterprises/{enterprise}/copilot/metrics/reports/enterprise-28-day/latest`
+
+**Report File:** JSON (enterprise daily metrics in report files)
 
 ```json
 {
@@ -44,7 +48,11 @@
 
 ## 2. User Daily Metrics Schema
 
-**Endpoint:** `GET /enterprises/{enterprise}/copilot/metrics/users` (with download link)
+**Report Endpoints (metadata with download links):**
+- `GET /enterprises/{enterprise}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD`
+- `GET /enterprises/{enterprise}/copilot/metrics/reports/users-28-day/latest`
+
+**Report File:** JSON Lines (one record per line in report files)
 
 ```json
 {
@@ -290,7 +298,9 @@
 
 ## 7. Organization Metrics Schema
 
-**Endpoint:** `GET /orgs/{org}/copilot/metrics`
+**Report Endpoints (metadata with download links):**
+- `GET /orgs/{org}/copilot/metrics/reports/organization-1-day?day=YYYY-MM-DD`
+- `GET /orgs/{org}/copilot/metrics/reports/organization-28-day/latest`
 
 ```json
 [
@@ -398,8 +408,9 @@
 
 ## 9. Data Availability Notes
 
-- **Historical data:** Up to 28 days for downloadable metrics
+- **Historical data:** Up to 1 year for report downloads
 - **Data freshness:** Daily, processed overnight
 - **Privacy threshold:** Metrics require 5+ users for aggregation
-- **Download format:** JSON Lines (one record per line for user metrics)
+- **Download format:** JSON for enterprise/org aggregate, JSON Lines for user metrics
+- **Signed URLs:** Download links expire (fetch promptly)
 - **Rate limits:** Standard GitHub API rate limits apply

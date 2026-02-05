@@ -38,9 +38,24 @@
 
 ---
 
-### 2. Copilot Metrics API (`GET /orgs/{org}/copilot/metrics`)
+### 2. Copilot Usage Metrics Reports (Org)
 
-**Top-Level Properties per Day:**
+**Metadata Endpoint:** `GET /orgs/{org}/copilot/metrics/reports/organization-1-day?day=YYYY-MM-DD`
+
+**Metadata Response:**
+```json
+{
+  "download_links": [
+    "https://example.com/copilot-usage-report-1.json",
+    "https://example.com/copilot-usage-report-2.json"
+  ],
+  "report_day": "2025-07-01"
+}
+```
+
+**Download Step:** Fetch each URL in `download_links` and parse JSON.
+
+**Top-Level Properties per Day (Report File):**
 | Property | Description |
 |----------|-------------|
 | `date` | ISO date string (YYYY-MM-DD) |
@@ -197,13 +212,11 @@
 
 ---
 
-### 8. Team-Level Metrics
+### 8. Legacy Team-Level Metrics (Deprecated)
 
 **Endpoint:** `GET /orgs/{org}/team/{team_slug}/copilot/metrics`
 
-**Tested Result:** Empty response for tested teams (need 5+ licensed users per team per day)
-
-**Note:** Team granularity works but requires teams with sufficient Copilot users.
+**Status:** Deprecated and scheduled for sunset. Migrate to usage metrics reports.
 
 ---
 

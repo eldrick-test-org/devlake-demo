@@ -162,11 +162,20 @@ ORDER BY cm.date;
 
 | Q Dev Approach | Copilot Approach |
 |----------------|------------------|
-| Data from S3 CSV files | Data from GitHub REST API |
+| Data from S3 CSV files | Data from GitHub REST API (usage metrics reports + downloads) |
 | User-level granularity | Org/Team-level (Option B) |
 | AWS credentials | GitHub PAT with org read |
 | No time correlation | Before/After implementation date |
 | Standalone dashboards | Correlation with existing DORA |
+
+### Data Collection Pipeline (New API)
+
+1. **Request report metadata**
+    - `GET /orgs/{org}/copilot/metrics/reports/organization-1-day?day=YYYY-MM-DD`
+    - or enterprise equivalents when using enterprise scopes
+2. **Download report files** from `download_links`
+3. **Parse JSON/JSONL** and persist tool-layer metrics
+4. **Incremental**: collect missing days; re-download if gaps
 
 ### Plugin Structure
 ```
@@ -185,7 +194,7 @@ backend/plugins/copilot/
 │   └── migrationscripts/
 ├── tasks/
 │   ├── api_client.go       # GitHub API wrapper
-│   ├── metrics_collector.go    # Collect from /copilot/metrics
+│   ├── reports_collector.go    # Collect report metadata + download files
 │   ├── seats_collector.go      # Collect seat info (for adoption date)
 │   └── task_data.go
 ```
@@ -207,7 +216,8 @@ type QDevConn struct {
 // Copilot Connection (GitHub)
 type CopilotConn struct {
     Token        string `json:"token"`        // PAT or GitHub App token
-    Organization string `json:"organization"` // Target org name
+    Organization string `json:"organization"` // Target org name (org reports)
+    Enterprise   string `json:"enterprise,omitempty"` // Optional enterprise slug
     // Optional: for team-level granularity
     Teams        []string `json:"teams,omitempty"`
     // Rate limiting
@@ -244,13 +254,13 @@ type CopilotConn struct {
 
 ## Open Questions
 
-1. **Team Granularity**: Should we support team-level metrics (`/orgs/{org}/team/{team_slug}/copilot/metrics`)? Would need to map teams to repos.
+1. **Team Granularity**: Usage metrics reports are org/enterprise scoped only. Do we need a separate team attribution strategy?
 
-2. **Repo Attribution**: The Copilot metrics API only shows repo-level data for PR summaries. For code completions, there's no repo breakdown - only language/editor. Is this sufficient?
+2. **Repo Attribution**: Report data does not include repo breakdown for code completions. Is language/editor granularity sufficient for impact analysis?
 
 3. **Multiple Implementation Dates**: What if different teams adopted Copilot at different times? Do we need per-team adoption dates?
 
-4. **API Limits**: The metrics API has a **100-day lookback limit**. For long-term trending, we need to collect and store data incrementally.
+4. **API Limits**: Reports available up to **1 year**. For long-term trending, collect and store incrementally.
 
 ---
 
