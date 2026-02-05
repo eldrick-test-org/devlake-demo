@@ -1,0 +1,528 @@
+== Deployment Frequency Impact ==
+[No SQL found]
+
+== Adoption vs Deployment Frequency ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+    AND $__timeFilter(date)
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_deployments_weekly AS (
+  SELECT
+    DATE_SUB(DATE(finished_date), INTERVAL WEEKDAY(DATE(finished_date)) DAY) AS week_start,
+    COUNT(*) AS deploy_count
+  FROM cicd_deployment_commits
+  WHERE result = 'SUCCESS'
+    AND $__timeFilter(finished_date)
+  GROUP BY DATE_SUB(DATE(finished_date), INTERVAL WEEKDAY(DATE(finished_date)) DAY)
+)
+SELECT
+  UNIX_TIMESTAMP(aw.week_start) AS time_sec,
+  aw.adoption_pct AS 'Adoption %',
+  COALESCE(dw.deploy_count, 0) AS 'Deployments'
+FROM _adoption_weekly aw
+LEFT JOIN _deployments_weekly dw ON aw.week_start = dw.week_start
+ORDER BY aw.week_start
+
+== Adoption vs Deployment Frequency (r) ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+    AND $__timeFilter(date)
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_deployments_weekly AS (
+  SELECT
+    DATE_SUB(DATE(finished_date), INTERVAL WEEKDAY(DATE(finished_date)) DAY) AS week_start,
+    COUNT(*) AS deploy_count
+  FROM cicd_deployment_commits
+  WHERE result = 'SUCCESS'
+    AND $__timeFilter(finished_date)
+  GROUP BY DATE_SUB(DATE(finished_date), INTERVAL WEEKDAY(DATE(finished_date)) DAY)
+),
+_joined AS (
+  SELECT
+    aw.adoption_pct,
+    COALESCE(dw.deploy_count, 0) AS deploy_count
+  FROM _adoption_weekly aw
+  LEFT JOIN _deployments_weekly dw ON aw.week_start = dw.week_start
+)
+SELECT
+  ROUND(
+    (COUNT(*) * SUM(adoption_pct * deploy_count) - SUM(adoption_pct) * SUM(deploy_count)) /
+    NULLIF(
+      SQRT(
+        (COUNT(*) * SUM(adoption_pct * adoption_pct) - POW(SUM(adoption_pct), 2)) *
+        (COUNT(*) * SUM(deploy_count * deploy_count) - POW(SUM(deploy_count), 2))
+      ),
+      0
+    ),
+    2
+  ) AS correlation_r
+FROM _joined
+WHERE adoption_pct IS NOT NULL
+
+== Deployment Frequency Change (High vs Low Adoption) ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_deployments_weekly AS (
+  SELECT
+    DATE_SUB(DATE(finished_date), INTERVAL WEEKDAY(DATE(finished_date)) DAY) AS week_start,
+    COUNT(*) AS deploy_count
+  FROM cicd_deployment_commits
+  WHERE result = 'SUCCESS'
+    AND $__timeFilter(finished_date)
+  GROUP BY DATE_SUB(DATE(finished_date), INTERVAL WEEKDAY(DATE(finished_date)) DAY)
+),
+_adoption_deploy AS (
+  SELECT
+    CASE WHEN aw.adoption_pct < 50 THEN 'low' ELSE 'high' END AS tier,
+    COALESCE(dw.deploy_count, 0) AS deploy_count
+  FROM _adoption_weekly aw
+  LEFT JOIN _deployments_weekly dw ON aw.week_start = dw.week_start
+),
+_tier_avg AS (
+  SELECT
+    tier,
+    AVG(deploy_count) AS avg_deploys
+  FROM _adoption_deploy
+  GROUP BY tier
+)
+SELECT
+  ROUND(
+    ((SELECT avg_deploys FROM _tier_avg WHERE tier = 'high') -
+     (SELECT avg_deploys FROM _tier_avg WHERE tier = 'low')) /
+    NULLIF((SELECT avg_deploys FROM _tier_avg WHERE tier = 'low'), 0) * 100,
+    1
+  ) AS change_pct
+
+== Change Failure Rate Impact ==
+[No SQL found]
+
+== Adoption vs Change Failure Rate ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+    AND $__timeFilter(date)
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_deployments_weekly AS (
+  SELECT
+    DATE_SUB(DATE(finished_date), INTERVAL WEEKDAY(DATE(finished_date)) DAY) AS week_start,
+    COUNT(*) AS total_deploys,
+    SUM(CASE WHEN result = 'FAILURE' THEN 1 ELSE 0 END) AS failed_deploys
+  FROM cicd_deployment_commits
+  WHERE $__timeFilter(finished_date)
+  GROUP BY DATE_SUB(DATE(finished_date), INTERVAL WEEKDAY(DATE(finished_date)) DAY)
+)
+SELECT
+  UNIX_TIMESTAMP(aw.week_start) AS time_sec,
+  aw.adoption_pct AS 'Adoption %',
+  ROUND(dw.failed_deploys * 100.0 / NULLIF(dw.total_deploys, 0), 1) AS 'CFR %'
+FROM _adoption_weekly aw
+LEFT JOIN _deployments_weekly dw ON aw.week_start = dw.week_start
+ORDER BY aw.week_start
+
+== Recovery Time (MTTR) Impact ==
+[No SQL found]
+
+== Adoption vs MTTR ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+    AND $__timeFilter(date)
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_incidents_weekly AS (
+  SELECT
+    DATE_SUB(DATE(resolution_date), INTERVAL WEEKDAY(DATE(resolution_date)) DAY) AS week_start,
+    AVG(TIMESTAMPDIFF(HOUR, created_date, resolution_date)) AS mttr_hours
+  FROM issues
+  WHERE type = 'INCIDENT'
+    AND resolution_date IS NOT NULL
+    AND $__timeFilter(resolution_date)
+  GROUP BY DATE_SUB(DATE(resolution_date), INTERVAL WEEKDAY(DATE(resolution_date)) DAY)
+)
+SELECT
+  UNIX_TIMESTAMP(aw.week_start) AS time_sec,
+  aw.adoption_pct AS 'Adoption %',
+  ROUND(iw.mttr_hours, 1) AS 'MTTR (hours)'
+FROM _adoption_weekly aw
+LEFT JOIN _incidents_weekly iw ON aw.week_start = iw.week_start
+WHERE iw.mttr_hours IS NOT NULL
+ORDER BY aw.week_start
+
+== MTTR by Adoption Tier ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct,
+    CASE
+      WHEN AVG(adoption_pct) < 25 THEN '1: <25%'
+      WHEN AVG(adoption_pct) < 50 THEN '2: 25-50%'
+      WHEN AVG(adoption_pct) < 75 THEN '3: 50-75%'
+      ELSE '4: >75%'
+    END AS adoption_tier
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_incidents_weekly AS (
+  SELECT
+    DATE_SUB(DATE(resolution_date), INTERVAL WEEKDAY(DATE(resolution_date)) DAY) AS week_start,
+    AVG(TIMESTAMPDIFF(HOUR, created_date, resolution_date)) AS mttr_hours
+  FROM issues
+  WHERE type = 'INCIDENT'
+    AND resolution_date IS NOT NULL
+    AND $__timeFilter(resolution_date)
+  GROUP BY DATE_SUB(DATE(resolution_date), INTERVAL WEEKDAY(DATE(resolution_date)) DAY)
+)
+SELECT
+  aw.adoption_tier AS 'Adoption Tier',
+  ROUND(AVG(iw.mttr_hours), 1) AS 'MTTR (hours)'
+FROM _adoption_weekly aw
+LEFT JOIN _incidents_weekly iw ON aw.week_start = iw.week_start
+WHERE iw.mttr_hours IS NOT NULL
+GROUP BY aw.adoption_tier
+ORDER BY aw.adoption_tier
+
+== Adoption vs MTTR (r) ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+    AND $__timeFilter(date)
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_incidents_weekly AS (
+  SELECT
+    DATE_SUB(DATE(resolution_date), INTERVAL WEEKDAY(DATE(resolution_date)) DAY) AS week_start,
+    AVG(TIMESTAMPDIFF(HOUR, created_date, resolution_date)) AS mttr_hours
+  FROM issues
+  WHERE type = 'INCIDENT'
+    AND resolution_date IS NOT NULL
+    AND $__timeFilter(resolution_date)
+  GROUP BY DATE_SUB(DATE(resolution_date), INTERVAL WEEKDAY(DATE(resolution_date)) DAY)
+),
+_joined AS (
+  SELECT
+    aw.adoption_pct,
+    iw.mttr_hours
+  FROM _adoption_weekly aw
+  INNER JOIN _incidents_weekly iw ON aw.week_start = iw.week_start
+)
+SELECT
+  ROUND(
+    (COUNT(*) * SUM(adoption_pct * mttr_hours) - SUM(adoption_pct) * SUM(mttr_hours)) /
+    NULLIF(
+      SQRT(
+        (COUNT(*) * SUM(adoption_pct * adoption_pct) - POW(SUM(adoption_pct), 2)) *
+        (COUNT(*) * SUM(mttr_hours * mttr_hours) - POW(SUM(mttr_hours), 2))
+      ),
+      0
+    ),
+    2
+  ) AS correlation_r
+FROM _joined
+
+== MTTR Change (High vs Low Adoption) ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_incidents_weekly AS (
+  SELECT
+    DATE_SUB(DATE(resolution_date), INTERVAL WEEKDAY(DATE(resolution_date)) DAY) AS week_start,
+    AVG(TIMESTAMPDIFF(HOUR, created_date, resolution_date)) AS mttr_hours
+  FROM issues
+  WHERE type = 'INCIDENT'
+    AND resolution_date IS NOT NULL
+    AND $__timeFilter(resolution_date)
+  GROUP BY DATE_SUB(DATE(resolution_date), INTERVAL WEEKDAY(DATE(resolution_date)) DAY)
+),
+_adoption_mttr AS (
+  SELECT
+    CASE WHEN aw.adoption_pct < 50 THEN 'low' ELSE 'high' END AS tier,
+    iw.mttr_hours
+  FROM _adoption_weekly aw
+  INNER JOIN _incidents_weekly iw ON aw.week_start = iw.week_start
+),
+_tier_avg AS (
+  SELECT
+    tier,
+    AVG(mttr_hours) AS avg_mttr
+  FROM _adoption_mttr
+  GROUP BY tier
+)
+SELECT
+  ROUND(
+    ((SELECT avg_mttr FROM _tier_avg WHERE tier = 'high') -
+     (SELECT avg_mttr FROM _tier_avg WHERE tier = 'low')) /
+    NULLIF((SELECT avg_mttr FROM _tier_avg WHERE tier = 'low'), 0) * 100,
+    1
+  ) AS change_pct
+
+== Code Review Time Impact ==
+[No SQL found]
+
+== Review Time by Adoption Tier ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct,
+    CASE
+      WHEN AVG(adoption_pct) < 25 THEN '1: <25%'
+      WHEN AVG(adoption_pct) < 50 THEN '2: 25-50%'
+      WHEN AVG(adoption_pct) < 75 THEN '3: 50-75%'
+      ELSE '4: >75%'
+    END AS adoption_tier
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_pr_review_weekly AS (
+  SELECT
+    DATE_SUB(DATE(pr_merged_date), INTERVAL WEEKDAY(DATE(pr_merged_date)) DAY) AS week_start,
+    AVG(pr_review_time) / 60.0 AS avg_review_time_hours
+  FROM project_pr_metrics
+  WHERE $__timeFilter(pr_merged_date)
+    AND pr_review_time > 0
+  GROUP BY DATE_SUB(DATE(pr_merged_date), INTERVAL WEEKDAY(DATE(pr_merged_date)) DAY)
+)
+SELECT
+  aw.adoption_tier AS 'Adoption Tier',
+  ROUND(AVG(prw.avg_review_time_hours), 1) AS 'Review Time (hours)'
+FROM _adoption_weekly aw
+LEFT JOIN _pr_review_weekly prw ON aw.week_start = prw.week_start
+WHERE prw.avg_review_time_hours IS NOT NULL
+GROUP BY aw.adoption_tier
+ORDER BY aw.adoption_tier
+
+== Adoption vs Review Time Trend ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+    AND $__timeFilter(date)
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_pr_review_weekly AS (
+  SELECT
+    DATE_SUB(DATE(pr_merged_date), INTERVAL WEEKDAY(DATE(pr_merged_date)) DAY) AS week_start,
+    AVG(pr_review_time) / 60.0 AS avg_review_time_hours
+  FROM project_pr_metrics
+  WHERE $__timeFilter(pr_merged_date)
+    AND pr_review_time > 0
+  GROUP BY DATE_SUB(DATE(pr_merged_date), INTERVAL WEEKDAY(DATE(pr_merged_date)) DAY)
+)
+SELECT
+  UNIX_TIMESTAMP(aw.week_start) AS time_sec,
+  aw.adoption_pct AS 'Adoption %',
+  ROUND(prw.avg_review_time_hours, 1) AS 'Review Time (h)'
+FROM _adoption_weekly aw
+LEFT JOIN _pr_review_weekly prw ON aw.week_start = prw.week_start
+ORDER BY aw.week_start
+
+== Review Time Change (High vs Low Adoption) ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_pr_review_weekly AS (
+  SELECT
+    DATE_SUB(DATE(pr_merged_date), INTERVAL WEEKDAY(DATE(pr_merged_date)) DAY) AS week_start,
+    AVG(pr_review_time) / 60.0 AS avg_review_time_hours
+  FROM project_pr_metrics
+  WHERE $__timeFilter(pr_merged_date)
+    AND pr_review_time > 0
+  GROUP BY DATE_SUB(DATE(pr_merged_date), INTERVAL WEEKDAY(DATE(pr_merged_date)) DAY)
+),
+_adoption_review AS (
+  SELECT
+    CASE WHEN aw.adoption_pct < 50 THEN 'low' ELSE 'high' END AS tier,
+    prw.avg_review_time_hours
+  FROM _adoption_weekly aw
+  INNER JOIN _pr_review_weekly prw ON aw.week_start = prw.week_start
+),
+_tier_avg AS (
+  SELECT
+    tier,
+    AVG(avg_review_time_hours) AS avg_review
+  FROM _adoption_review
+  GROUP BY tier
+)
+SELECT
+  ROUND(
+    ((SELECT avg_review FROM _tier_avg WHERE tier = 'high') -
+     (SELECT avg_review FROM _tier_avg WHERE tier = 'low')) /
+    NULLIF((SELECT avg_review FROM _tier_avg WHERE tier = 'low'), 0) * 100,
+    1
+  ) AS change_pct
+
+== Adoption vs Review Time (r) ==
+-- SQL 1
+WITH _copilot_adoption AS (
+  SELECT
+    DATE(date) AS metric_date,
+    ROUND(SUM(total_active_users) * 100.0 / NULLIF(SUM(seat_total), 0), 1) AS adoption_pct
+  FROM _tool_copilot_org_metrics
+  WHERE scope_id = '${scope_id}'
+    AND $__timeFilter(date)
+  GROUP BY DATE(date)
+),
+_adoption_weekly AS (
+  SELECT
+    DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY) AS week_start,
+    AVG(adoption_pct) AS adoption_pct
+  FROM _copilot_adoption
+  GROUP BY DATE_SUB(metric_date, INTERVAL WEEKDAY(metric_date) DAY)
+),
+_pr_review_weekly AS (
+  SELECT
+    DATE_SUB(DATE(pr_merged_date), INTERVAL WEEKDAY(DATE(pr_merged_date)) DAY) AS week_start,
+    AVG(pr_review_time) / 60.0 AS avg_review_time_hours
+  FROM project_pr_metrics
+  WHERE $__timeFilter(pr_merged_date)
+    AND pr_review_time > 0
+  GROUP BY DATE_SUB(DATE(pr_merged_date), INTERVAL WEEKDAY(DATE(pr_merged_date)) DAY)
+),
+_joined AS (
+  SELECT
+    aw.adoption_pct,
+    prw.avg_review_time_hours
+  FROM _adoption_weekly aw
+  INNER JOIN _pr_review_weekly prw ON aw.week_start = prw.week_start
+)
+SELECT
+  ROUND(
+    (COUNT(*) * SUM(adoption_pct * avg_review_time_hours) - SUM(adoption_pct) * SUM(avg_review_time_hours)) /
+    NULLIF(
+      SQRT(
+        (COUNT(*) * SUM(adoption_pct * adoption_pct) - POW(SUM(adoption_pct), 2)) *
+        (COUNT(*) * SUM(avg_review_time_hours * avg_review_time_hours) - POW(SUM(avg_review_time_hours), 2))
+      ),
+      0
+    ),
+    2
+  ) AS correlation_r
+FROM _joined
+
