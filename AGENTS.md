@@ -4,7 +4,8 @@ This repository is a simulation environment for generating DORA metrics in Apach
 
 ## 📚 Core Documentation
 These documents contain essential operational procedures:
-- **[docs/DEVLAKE_SETUP.md](docs/DEVLAKE_SETUP.md)**: **CRITICAL**. Contains custom Docker build steps, port mappings, and API automation scripts. Read this before touching `docker-compose.yml` or handling configuration.
+- **[README.md](README.md)**: **CRITICAL**. Primary source for all DevLake setup instructions including custom Docker build steps, port mappings, API automation scripts, data seeding, and troubleshooting. Read this before touching `docker-compose.yml` or handling configuration.
+- **[docs/DEVLAKE_SETUP.md](docs/DEVLAKE_SETUP.md)**: **DEPRECATED**. This file now redirects to README.md. All setup instructions have been consolidated.
 - **[docs/USAGE.md](docs/USAGE.md)**: Explains how the simulation works, how to manually trigger signals, and the logic behind DORA metrics generation.
 
 ## Project Architecture & Context
@@ -27,7 +28,7 @@ cd ../incubator-devlake/backend; docker build -t devlake-backend:local .
 cd ../incubator-devlake/config-ui; docker build -t devlake-config-ui:local .
 cd ../incubator-devlake/grafana; docker build -t devlake-dashboard:local .
 ```
-See [docs/DEVLAKE_SETUP.md](docs/DEVLAKE_SETUP.md) for full details.
+See [README.md](README.md#building-custom-devlake-images) for full details.
 
 ### 2. Running the Infrastructure
 Start the stack with `docker-compose up -d`. Note the non-standard port mappings to avoid conflicts:
@@ -46,7 +47,7 @@ Use `simulate_dora.ps1` to generate metrics data.
 ## Codebase Conventions
 
 - **Scripting:** Prefer **PowerShell** for all automation and setup scripts.
-- **API Interaction:** DevLake configuration (Connections, Scopes, Blueprints) is automated via `Invoke-RestMethod` rather than the UI. See [docs/DEVLAKE_SETUP.md](docs/DEVLAKE_SETUP.md) for payload examples.
+- **API Interaction:** DevLake configuration (Connections, Scopes, Blueprints) is automated via `Invoke-RestMethod` rather than the UI. See [README.md](README.md#creating-github-connection) for payload examples.
 - **Environment:**
   - Local images are tagged `:local`.
   - Secrets (DB passwords, Encryption keys) are managed in `.env`.
