@@ -5,7 +5,6 @@ This repository is a simulation environment for generating DORA metrics in Apach
 ## 📚 Core Documentation
 These documents contain essential operational procedures:
 - **[README.md](README.md)**: **CRITICAL**. Primary source for all DevLake setup instructions including custom Docker build steps, port mappings, API automation scripts, data seeding, and troubleshooting. Read this before touching `docker-compose.yml` or handling configuration.
-- **[docs/DEVLAKE_SETUP.md](docs/DEVLAKE_SETUP.md)**: **DEPRECATED**. This file now redirects to README.md. All setup instructions have been consolidated.
 - **[docs/USAGE.md](docs/USAGE.md)**: Explains how the simulation works, how to manually trigger signals, and the logic behind DORA metrics generation.
 
 ## Project Architecture & Context
