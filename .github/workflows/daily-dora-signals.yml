@@ -1,0 +1,157 @@
+name: Daily DORA Signals
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # Daily at 6:00 AM UTC
+  workflow_dispatch: # Allow manual trigger for testing
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+jobs:
+  create-activity:
+    name: Create Activity (PRs)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine number of PRs to create
+        id: count
+        run: echo "pr_count=$(( RANDOM % 3 + 1 ))" >> "$GITHUB_OUTPUT"
+
+      - name: Create and merge PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          REPO="${{ github.repository }}"
+          PR_COUNT=${{ steps.count.outputs.pr_count }}
+          echo "Creating ${PR_COUNT} PR(s)..."
+
+          for i in $(seq 1 "$PR_COUNT"); do
+            TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+            BRANCH="chore/daily-signal-${TIMESTAMP}-${i}"
+
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout -b "$BRANCH"
+
+            # Update a timestamp marker file
+            echo "Daily DORA signal - Run: ${TIMESTAMP}, PR: ${i}/${PR_COUNT}" >> daily-signal.log
+            git add daily-signal.log
+            git commit -m "chore: daily activity signal ${TIMESTAMP}-${i}"
+            git push -u origin "$BRANCH"
+
+            # Create PR
+            PR_URL=$(gh pr create \
+              --repo "$REPO" \
+              --title "chore: daily activity signal ${TIMESTAMP}-${i}" \
+              --body "Automated daily DORA signal PR for Lead Time metrics." \
+              --base main)
+            echo "Created PR: $PR_URL"
+
+            # Brief delay then auto-merge
+            sleep 10
+            PR_NUMBER=$(echo "$PR_URL" | grep -oP '/pull/\K\d+')
+            gh pr merge "$PR_NUMBER" --repo "$REPO" --merge --delete-branch
+            echo "Merged PR #${PR_NUMBER}"
+
+            # Return to main for next iteration
+            git checkout main
+            git pull origin main
+          done
+
+  trigger-deployments:
+    name: Trigger Deployments
+    runs-on: ubuntu-latest
+    needs: create-activity
+    steps:
+      - name: Determine if deployment should fail
+        id: failure
+        run: |
+          # ~15% chance of simulated failure
+          ROLL=$(( RANDOM % 100 ))
+          if [ "$ROLL" -lt 15 ]; then
+            echo "simulate_failure=true" >> "$GITHUB_OUTPUT"
+            echo "Simulating a FAILED deployment (rolled ${ROLL})"
+          else
+            echo "simulate_failure=false" >> "$GITHUB_OUTPUT"
+            echo "Simulating a SUCCESSFUL deployment (rolled ${ROLL})"
+          fi
+
+      - name: Trigger Production Deploy workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run "Production Deploy" \
+            --repo "${{ github.repository }}" \
+            -f simulate_failure=${{ steps.failure.outputs.simulate_failure }}
+          echo "Triggered Production Deploy (simulate_failure=${{ steps.failure.outputs.simulate_failure }})"
+
+  create-incidents:
+    name: Create and Resolve Incidents
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine incident counts
+        id: counts
+        run: |
+          echo "create_count=$(( RANDOM % 3 + 1 ))" >> "$GITHUB_OUTPUT"
+          echo "resolve_count=$(( RANDOM % 2 + 1 ))" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure incident label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create incident \
+            --repo "${{ github.repository }}" \
+            --color d73a4a \
+            --description "Incidents and outages" 2>/dev/null || true
+
+      - name: Create incident issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+          CREATE_COUNT=${{ steps.counts.outputs.create_count }}
+          TITLES=("High Latency in Production" "Elevated Error Rate Detected" "Service Degradation on API Gateway" "Database Connection Pool Exhausted" "Memory Usage Spike on Worker Nodes")
+          BODIES=("Automated monitoring detected elevated latency in production services." "Error rates have exceeded normal thresholds. Investigating root cause." "API Gateway is returning intermittent 503 errors." "Connection pool usage has reached critical levels." "Worker node memory consumption has spiked above 90%.")
+
+          echo "Creating ${CREATE_COUNT} incident(s)..."
+          for i in $(seq 1 "$CREATE_COUNT"); do
+            IDX=$(( RANDOM % ${#TITLES[@]} ))
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+            gh issue create \
+              --repo "$REPO" \
+              --title "${TITLES[$IDX]} - ${TIMESTAMP}" \
+              --body "${BODIES[$IDX]}" \
+              --label "incident"
+            echo "Created incident issue ${i}/${CREATE_COUNT}"
+            sleep 2
+          done
+
+      - name: Resolve existing incidents
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+          RESOLVE_COUNT=${{ steps.counts.outputs.resolve_count }}
+
+          echo "Attempting to resolve up to ${RESOLVE_COUNT} incident(s)..."
+          OPEN_INCIDENTS=$(gh issue list --repo "$REPO" --label "incident" --state open --json number --jq '.[].number' | head -n "$RESOLVE_COUNT")
+
+          if [ -z "$OPEN_INCIDENTS" ]; then
+            echo "No open incidents to resolve."
+            exit 0
+          fi
+
+          for ISSUE_NUM in $OPEN_INCIDENTS; do
+            gh issue close "$ISSUE_NUM" \
+              --repo "$REPO" \
+              --comment "Incident resolved. Service restored to normal operation."
+            echo "Resolved incident #${ISSUE_NUM}"
+            sleep 2
+          done
