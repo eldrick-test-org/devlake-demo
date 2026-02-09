@@ -54,9 +54,11 @@ jobs:
               --base main)
             echo "Created PR: $PR_URL"
 
-            # Brief delay then auto-merge
-            sleep 10
-            PR_NUMBER=$(echo "$PR_URL" | grep -oP '/pull/\K\d+')
+            # Extract PR number reliably using gh CLI
+            PR_NUMBER=$(gh pr view "$PR_URL" --repo "$REPO" --json number --jq '.number')
+
+            # Wait for CI checks to register before merging
+            sleep 15
             gh pr merge "$PR_NUMBER" --repo "$REPO" --merge --delete-branch
             echo "Merged PR #${PR_NUMBER}"
 
@@ -117,8 +119,22 @@ jobs:
         run: |
           REPO="${{ github.repository }}"
           CREATE_COUNT=${{ steps.counts.outputs.create_count }}
-          TITLES=("High Latency in Production" "Elevated Error Rate Detected" "Service Degradation on API Gateway" "Database Connection Pool Exhausted" "Memory Usage Spike on Worker Nodes")
-          BODIES=("Automated monitoring detected elevated latency in production services." "Error rates have exceeded normal thresholds. Investigating root cause." "API Gateway is returning intermittent 503 errors." "Connection pool usage has reached critical levels." "Worker node memory consumption has spiked above 90%.")
+
+          # Paired incident title/body entries (kept in sync by index)
+          declare -a TITLES=(
+            "High Latency in Production"
+            "Elevated Error Rate Detected"
+            "Service Degradation on API Gateway"
+            "Database Connection Pool Exhausted"
+            "Memory Usage Spike on Worker Nodes"
+          )
+          declare -a BODIES=(
+            "Automated monitoring detected elevated latency in production services."
+            "Error rates have exceeded normal thresholds. Investigating root cause."
+            "API Gateway is returning intermittent 503 errors."
+            "Connection pool usage has reached critical levels."
+            "Worker node memory consumption has spiked above 90%."
+          )
 
           echo "Creating ${CREATE_COUNT} incident(s)..."
           for i in $(seq 1 "$CREATE_COUNT"); do
