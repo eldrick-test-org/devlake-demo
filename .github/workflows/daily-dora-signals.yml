@@ -25,7 +25,9 @@ jobs:
 
       - name: Create and merge PRs
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN cannot create PRs when restricted by org/repo settings;
+          # a PAT with repo scope stored in GH_PAT is required.
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           set -e
           REPO="${{ github.repository }}"
