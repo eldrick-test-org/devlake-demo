@@ -1,7 +1,7 @@
 # Implementation Plan - Local DevLake Environment (Fork)
 
 ## Problem Statement
-We need to validate the "GitHub Copilot Impact Dashboard" and DORA metrics using a local DevLake instance. This instance must run from the `incubator-devlake` fork (`ewega/incubator-devlake`) which contains the custom `gh-copilot` plugin and Grafana dashboards. The standard Docker images do not contain these changes.
+We need to validate the "GitHub Copilot Impact Dashboard" and DORA metrics using a local DevLake instance. This instance must run from the `incubator-devlake` fork (`DevExpGBB/incubator-devlake`) which contains the custom `gh-copilot` plugin and Grafana dashboards. The standard Docker images do not contain these changes.
 
 ## Proposed Solution
 We will build custom Docker images from the local `incubator-devlake` source code and orchestrate them using an updated `docker-compose.yml` in the `devlake-demo` directory. This allows us to test the full stack (Backend + Config UI + Grafana) with our custom changes.

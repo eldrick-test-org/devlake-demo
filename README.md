@@ -7,7 +7,7 @@ A Node.js app for simulating DORA metrics in [Apache DevLake](https://devlake.ap
 - **Docker Desktop** running
 - **GitHub CLI** authenticated (`gh auth login`)
 - **GitHub PAT** with scopes: `repo`, `read:org`, `read:user`, `copilot`, `manage_billing:copilot`
-- **Sibling repo** `ewega/incubator-devlake` cloned alongside this repo (`cd .. && git clone https://github.com/ewega/incubator-devlake.git`)
+- **Sibling repo** `DevExpGBB/incubator-devlake` cloned alongside this repo (`cd .. && git clone https://github.com/DevExpGBB/incubator-devlake.git`)
 
 ## Building Custom DevLake Images
 

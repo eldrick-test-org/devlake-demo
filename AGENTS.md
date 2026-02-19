@@ -14,7 +14,7 @@ These documents contain essential operational procedures:
   - **Node.js App (`server.js`):** A dummy target for deployments.
   - **DevLake Stack (`docker-compose.yml`):** Runs `mysql`, `grafana`, `devlake` (backend), and `config-ui` using **custom local images**.
   - **Simulation Engine (`scripts/`):** PowerShell scripts utilizing `gh` CLI to create real GitHub Artifacts (Issues, PRs, Workflow Runs).
-- **Directory Dependency:** This repo expects a sibling directory `incubator-devlake` (fork `ewega/incubator-devlake`) for building custom Docker images.
+- **Directory Dependency:** This repo expects a sibling directory `incubator-devlake` (fork `DevExpGBB/incubator-devlake`) for building custom Docker images.
 
 ## Critical Workflows
 
